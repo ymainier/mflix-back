@@ -70,6 +70,25 @@ async function main() {
     console.log(`Created season ${episode.title}`);
   }
   console.log(`Episodes seeded ...`);
+  console.log(`Seeding show -> seasons -> episodes links ...`);
+  for (const [showId, seasons] of Object.entries(tvshows.data)) {
+    await prisma.show.update({
+      where: { id: showId },
+      data: {
+        seasons: { set: Object.keys(seasons).map((id) => ({ id })) },
+      },
+    });
+    console.log(`Linked show ${showId} -> seasons ${Object.keys(seasons)}`);
+    for (const [seasonId, episodeIdList] of Object.entries(seasons)) {
+      await prisma.season.update({
+        where: { id: seasonId },
+        data: {
+          episodes: { set: episodeIdList.map((id) => ({ id })) },
+        },
+      });
+    }
+  }
+  console.log(`Show -> season links seeded ...`);
   console.log(`Seeding finished.`);
 }
 

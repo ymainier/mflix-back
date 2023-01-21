@@ -28,17 +28,21 @@ model Show {
   backdrop    String?
   poster      String?
   seen        Boolean  @default(false)
+  seasons     Season[]
 }
 
 model Season {
-  id          String   @id
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          String    @id
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   title       String?
   description String?
   poster      String?
   number      Int?
-  seen        Boolean  @default(false)
+  seen        Boolean   @default(false)
+  show        Show?      @relation(fields: [showId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  showId      String?
+  episodes    Episode[]
 }
 
 model Episode {
@@ -48,7 +52,9 @@ model Episode {
   fullpath    String
   title       String?
   description String?
-  still      String?
+  still       String?
   number      Int?
   seen        Boolean  @default(false)
+  season      Season?   @relation(fields: [seasonId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  seasonId    String?
 }
