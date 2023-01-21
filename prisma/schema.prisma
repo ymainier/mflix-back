@@ -18,3 +18,37 @@ model Movie {
   poster      String?
   seen        Boolean  @default(false)
 }
+
+model Show {
+  id          String   @id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  title       String
+  description String?
+  backdrop    String?
+  poster      String?
+  seen        Boolean  @default(false)
+}
+
+model Season {
+  id          String   @id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  title       String?
+  description String?
+  poster      String?
+  number      Int?
+  seen        Boolean  @default(false)
+}
+
+model Episode {
+  id          String   @id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  fullpath    String
+  title       String?
+  description String?
+  still      String?
+  number      Int?
+  seen        Boolean  @default(false)
+}
