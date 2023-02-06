@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import express, { Response } from "express";
 
+const { VLC_AUTH, VLC_REQUEST_URL } = process.env;
 const prisma = new PrismaClient();
 const app = express();
 
@@ -10,7 +11,7 @@ function notFound(res: Response): void {
 
 function url(path: string, qs?: Record<string, string | number>): string {
   // Encoding the URL properly cause issue with filename containing spaces
-  let _url = `${process.env.VLC_REQUEST_URL}/${path}`;
+  let _url = `${VLC_REQUEST_URL}/${path}`;
   if (qs) {
     _url += `?${Object.entries(qs)
       .map(([k, v]) => `${k}=${v}`)
@@ -19,15 +20,22 @@ function url(path: string, qs?: Record<string, string | number>): string {
   return _url;
 }
 
-export async function status(qs: Record<string, string | number> = {}) {
+async function request(url: string) {
   // @ts-ignore fetch is still considered experimental in Node 18
-  const result = await fetch(url("status.json", qs));
+  return await fetch(url, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${VLC_AUTH}`).toString("base64")}`,
+    },
+  });
+}
+
+export async function status(qs: Record<string, string | number> = {}) {
+  const result = await request(url("status.json", qs));
   return await result.json();
 }
 
 export async function playlist() {
-  // @ts-ignore fetch is still considered experimental in Node 18
-  const result = await fetch(url("playlist.json"));
+  const result = await request(url("playlist.json"));
   return await result.json();
 }
 
@@ -135,7 +143,6 @@ app.post(`/player/play`, async (req, res) => {
     await status({ command: "pl_empty" });
     await status({ command: "in_play", input: file });
     res.status(200).json({ data: {} });
-    console.log(`Player Play ${file}`);
   } catch (e) {
     res.status(500).json({
       errors: [
@@ -151,7 +158,6 @@ app.post(`/player/stop`, async (_req, res) => {
     await status({ command: "pl_stop" });
     await status({ command: "pl_empty" });
     res.status(200).json({ data: {} });
-    console.log(`Player Stop`);
   } catch (e) {
     res.status(500).json({
       errors: [
@@ -165,7 +171,6 @@ app.post(`/player/togglePause`, async (_req, res) => {
   try {
     await status({ command: "pl_pause" });
     res.status(200).json({ data: {} });
-    console.log(`Toggle Pause`);
   } catch (e) {
     res.status(500).json({
       errors: [
@@ -197,9 +202,8 @@ app.post(`/player/seek`, async (req, res) => {
 
   try {
     await status({ command: "pl_play" });
-    await status({ command: "seek", val  });
+    await status({ command: "seek", val });
     res.status(200).json({ data: {} });
-    console.log(`Player Seeking to ${val}`);
   } catch (e) {
     res.status(500).json({
       errors: [
@@ -211,18 +215,25 @@ app.post(`/player/seek`, async (req, res) => {
 
 app.get(`/player/status`, async (_req, res) => {
   try {
-    const [ statusData, playlistData ] = await Promise.all([status(), playlist()]);
+    const [statusData, playlistData] = await Promise.all([
+      status(),
+      playlist(),
+    ]);
     const maybeUri: string | undefined = playlistData?.children?.find(
-      (child: { name?: string}) => child.name === "Playlist"
+      (child: { name?: string }) => child.name === "Playlist"
     )?.children?.[0]?.uri;
-    const fullpath = typeof maybeUri !== "undefined" ? decodeURI(new URL(maybeUri).pathname) : undefined;
-    res.status(200).json({ data: {
-      status: statusData.state,
-      time: statusData.time,
-      length: statusData.length,
-      fullpath
-    } });
-    console.log(`Player Status`);
+    const fullpath =
+      typeof maybeUri !== "undefined"
+        ? decodeURI(new URL(maybeUri).pathname)
+        : undefined;
+    res.status(200).json({
+      data: {
+        status: statusData.state,
+        time: statusData.time,
+        length: statusData.length,
+        fullpath,
+      },
+    });
   } catch (e) {
     res.status(500).json({
       errors: [
