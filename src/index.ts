@@ -1,7 +1,11 @@
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
 import { PrismaClient } from "@prisma/client";
 import express, { Response } from "express";
 
-const { VLC_AUTH, VLC_REQUEST_URL } = process.env;
+const { VLC_AUTH, VLC_REQUEST_URL, ALLOWED_DIR = "", PORT = 3000 } = process.env;
+const promisifiedExec = promisify(exec);
+const ALLOWED_DIR_ARRAY = ALLOWED_DIR.split(",");
 const prisma = new PrismaClient();
 const app = express();
 
@@ -126,10 +130,10 @@ app.post(`/player/play`, async (req, res) => {
   const { file } = req.query;
 
   if (typeof file !== "string") {
-    res.status(404).json({
+    res.status(400).json({
       errors: [
         {
-          code: 404,
+          code: 400,
           title: "Bad Request",
           description:
             "Specify the file to play in a `file` query string parameter",
@@ -186,10 +190,10 @@ app.post(`/player/seek`, async (req, res) => {
   const { value } = req.query;
 
   if (typeof value !== "string" || !value.match(NUMBER_REGEXP)) {
-    res.status(404).json({
+    res.status(400).json({
       errors: [
         {
-          code: 404,
+          code: 400,
           title: "Bad Request",
           description:
             "Specify the value to seek to in `value` query string parameter",
@@ -243,8 +247,35 @@ app.get(`/player/status`, async (_req, res) => {
   }
 });
 
-const PORT = 3000;
-const server = app.listen(PORT, () =>
+app.get(`/find`, async (req, res) => {
+  try {
+    const { dir } = req.query;
+    if (typeof dir !== "string" || !ALLOWED_DIR_ARRAY.includes(dir)) {
+      res.status(400).json({
+        errors: [
+          {
+            code: 400,
+            title: "Bad Request",
+            description: `Specify the directory to look into in the \`dir\` query string parameter fron those values: ${ALLOWED_DIR}`,
+          },
+        ],
+      });
+      return;
+    }
+    const files = await promisifiedExec(
+      `find ${dir} -type f -name \\*.mp4 -o -name \\*.mkv -o -name \\*.avi`
+    ).then((result) => result.stdout.trim().split("\n"));
+    res.status(200).json({ data: { files } });
+  } catch (e) {
+    res.status(500).json({
+      errors: [
+        { status: 500, title: "Internal Server Error", description: `${e}}` },
+      ],
+    });
+  }
+});
+
+app.listen(PORT, () =>
   console.log(`
 🚀 Server ready at: http://localhost:${PORT}`)
 );
