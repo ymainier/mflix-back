@@ -2,12 +2,15 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { PrismaClient } from "@prisma/client";
 import express, { Response } from "express";
+import cors from "cors";
 
 const { VLC_AUTH, VLC_REQUEST_URL, ALLOWED_DIR = "", PORT = 3000 } = process.env;
 const promisifiedExec = promisify(exec);
 const ALLOWED_DIR_ARRAY = ALLOWED_DIR.split(",");
 const prisma = new PrismaClient();
 const app = express();
+
+app.use(cors());
 
 function notFound(res: Response): void {
   res.status(404).json({ errors: [{ code: 404, title: "Not Found" }] });
