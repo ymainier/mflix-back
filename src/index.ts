@@ -4,7 +4,12 @@ import { PrismaClient } from "@prisma/client";
 import express, { Response } from "express";
 import cors from "cors";
 
-const { VLC_AUTH, VLC_REQUEST_URL, ALLOWED_DIR = "", PORT = 3000 } = process.env;
+const {
+  VLC_AUTH,
+  VLC_REQUEST_URL,
+  ALLOWED_DIR = "",
+  PORT = 3000,
+} = process.env;
 const promisifiedExec = promisify(exec);
 const ALLOWED_DIR_ARRAY = ALLOWED_DIR.split(",");
 const prisma = new PrismaClient();
@@ -269,6 +274,19 @@ app.get(`/find`, async (req, res) => {
       `find ${dir} -type f -name \\*.mp4 -o -name \\*.mkv -o -name \\*.avi`
     ).then((result) => result.stdout.trim().split("\n"));
     res.status(200).json({ data: { files } });
+  } catch (e) {
+    res.status(500).json({
+      errors: [
+        { status: 500, title: "Internal Server Error", description: `${e}}` },
+      ],
+    });
+  }
+});
+
+app.post(`/focus`, async (req, res) => {
+  try {
+    await promisifiedExec(`echo "scan" | cec-client -s -d 1`);
+    res.status(200).json({ data: {} });
   } catch (e) {
     res.status(500).json({
       errors: [
